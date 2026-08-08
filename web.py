@@ -6,8 +6,9 @@ import base64
 import json
 import re
 
-# Tworzymy folder avatars jeśli nie istnieje
+# Tworzymy foldery, jeśli nie istnieją
 os.makedirs("avatars", exist_ok=True)
+os.makedirs("nuty", exist_ok=True) # Nowy folder na muzykę!
 
 # Nazwa pliku bazy danych
 DB_FILE = "players_db.json"
@@ -740,16 +741,25 @@ class ChaosDraft:
 db = load_db()
 all_players_db = sorted(list(db.keys()))
 
-# --- ZARZĄDZANIE AUDIO (WBUDOWANY ODTWARZACZ STREAMLIT) ---
-st.markdown("<div style='text-align:center; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 10px; border: 1px solid #c8aa6e; margin-bottom: 20px;'><h4 style='color: #f2d590; margin-bottom: 10px;'>🎵 Odtwarzacz z Lobby (Włącz przed draftem!)</h4>", unsafe_allow_html=True)
-local_music_path = os.path.join("avatars", "theme.mp3")
-if os.path.exists(local_music_path):
-    st.audio(local_music_path, format="audio/mp3")
-else:
-    # Używamy ultra-stabilnego, wbudowanego odtwarzacza Streamlit ze znanym plikiem .mp3 z domeny publicznej jako zastępstwo.
-    st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", format="audio/mp3")
-    st.info("💡 Wgraj na GitHuba własny plik o nazwie 'theme.mp3' do folderu 'avatars', żeby zmienić tę zastępczą muzykę!")
-st.markdown("</div>", unsafe_allow_html=True)
+# --- ZARZĄDZANIE AUDIO Z FOLDERU NUTY ---
+st.markdown("<h4 style='color: #f2d590; text-align: center; margin-bottom: 10px; margin-top: -10px;'>🎵 Odtwarzacz z Lobby</h4>", unsafe_allow_html=True)
+col_m1, col_m2, col_m3 = st.columns([2, 4, 2])
+with col_m2:
+    supported_formats = ('.mp3', '.wav', '.ogg')
+    if os.path.exists("nuty"):
+        music_files = sorted([f for f in os.listdir("nuty") if f.lower().endswith(supported_formats)])
+    else:
+        music_files = []
+
+    if music_files:
+        selected_song = st.selectbox("Wybierz utwór do odtworzenia:", music_files)
+        song_path = os.path.join("nuty", selected_song)
+        st.audio(song_path)
+    else:
+        # Fallbackowy odtwarzacz
+        st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", format="audio/mp3")
+        st.info("💡 Wgraj na GitHuba własne utwory (.mp3) do folderu 'nuty', żeby móc je tutaj wybierać!")
+st.markdown("<hr style='border: 1px solid #c8aa6e; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
 
 # --- DUŻY DEEP U GÓRY EKRANU ---
