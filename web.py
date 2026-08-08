@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import random
 import os
@@ -8,10 +9,27 @@ import re
 
 # Tworzymy foldery, jeśli nie istnieją
 os.makedirs("avatars", exist_ok=True)
-os.makedirs("nuty", exist_ok=True) # Nowy folder na muzykę!
+os.makedirs("nuty", exist_ok=True)
 
 # Nazwa pliku bazy danych
 DB_FILE = "players_db.json"
+
+# Unikalne teksty dla graczy z bazy (wyskakujące na hover)
+PLAYER_QUOTES = {
+    "Majkel": "Toplane to wyspa, proszę mi tu nie gankować!",
+    "Pecker": "Zaufajcie mi, gramy pode mnie i wygrywamy.",
+    "arekjanicki": "Spokojnie panowie, odrobimy to w late game...",
+    "Menni": "To off-meta combo to pewniaczek, mówię wam!",
+    "Przemuś": "Znowu dostałem Supporta?! Dobra, robię full AP."
+}
+
+DEFAULT_QUOTES = [
+    "GG WP, jungle diff!",
+    "Gramy bezpiecznie, nie feedować!",
+    "Za Demacię! I za darmowe LP!",
+    "Czy ja znowu muszę was carrować?",
+    "First blood albo AFK."
+]
 
 st.set_page_config(page_title="ChaosDraft", page_icon="🎲", layout="wide")
 
@@ -113,17 +131,52 @@ def set_background():
         background: rgba(0,0,0,0);
     }}
     
-    /* ANIMACJE: Lewitujący Deep */
+    /* ANIMACJE: Lewitujący Deep i dymek */
     @keyframes floating {{
         0% {{ transform: translateY(0px); }}
         50% {{ transform: translateY(-15px); }}
         100% {{ transform: translateY(0px); }}
     }}
-    .floating-avatar {{
+    .deep-container {{
+        position: relative;
+        display: inline-block;
+    }}
+    .deep-img {{
         animation: floating 4s ease-in-out infinite;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }}
+    .deep-img:active {{
+        transform: scale(0.95);
+    }}
+    .deep-text {{
+        visibility: hidden;
+        width: 300px;
+        background-color: rgba(20,25,30,0.95);
+        color: #f2d590;
+        text-align: center;
+        border-radius: 12px;
+        padding: 15px;
+        position: absolute;
+        z-index: 101;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        border: 2px solid #c8aa6e;
+        opacity: 0;
+        transition: all 0.3s ease-in-out;
+        font-size: 15px;
+        font-weight: bold;
+        pointer-events: none;
+        box-shadow: 0px 10px 20px rgba(0,0,0,0.8);
+    }}
+    .deep-container:hover .deep-text, .deep-container:active .deep-text {{
+        visibility: visible;
+        opacity: 1;
+        transform: translateX(-50%) translateY(5px);
     }}
     
-    /* --- ANIMACJE I DYMKI PO BOKACH EKRANU (TEEMO / SHACO) --- */
+    /* --- ANIMACJE I DYMKI PO BOKACH EKRANU (Zablokowane na górze = absolute) --- */
     @keyframes bobLeft {{
         0% {{ transform: translateY(0px) rotate(-5deg); }}
         50% {{ transform: translateY(-20px) rotate(5deg); }}
@@ -136,8 +189,8 @@ def set_background():
     }}
     
     .teemo-container {{
-        position: fixed;
-        bottom: 15%;
+        position: absolute;
+        top: 150px;
         left: 2%;
         z-index: 100;
         animation: bobLeft 5s ease-in-out infinite;
@@ -163,7 +216,7 @@ def set_background():
         padding: 12px;
         position: absolute;
         z-index: 101;
-        bottom: 120%;
+        top: 110%;
         left: 50%;
         transform: translateX(-50%) translateY(20px);
         border: 2px solid #c8aa6e;
@@ -181,8 +234,8 @@ def set_background():
     }}
 
     .shaco-container {{
-        position: fixed;
-        bottom: 15%;
+        position: absolute;
+        top: 150px;
         right: 2%;
         z-index: 100;
         animation: bobRight 6s ease-in-out infinite;
@@ -208,7 +261,7 @@ def set_background():
         padding: 12px;
         position: absolute;
         z-index: 101;
-        bottom: 120%;
+        top: 110%;
         left: 50%;
         transform: translateX(-50%) translateY(20px);
         border: 2px solid #c8aa6e;
@@ -220,6 +273,46 @@ def set_background():
         box-shadow: 0px 10px 20px rgba(0,0,0,0.8);
     }}
     .shaco-container:hover .shaco-text, .shaco-container:active .shaco-text {{
+        visibility: visible;
+        opacity: 1;
+        transform: translateX(-50%) translateY(0px);
+    }}
+    
+    /* ANIMACJE: Awatary graczy w wynikach draftu */
+    .player-avatar-container {{
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }}
+    .player-avatar-img {{
+        transition: transform 0.2s, box-shadow 0.2s;
+    }}
+    .player-avatar-container:hover .player-avatar-img {{
+        transform: scale(1.1);
+        box-shadow: 0 0 15px #f2d590;
+    }}
+    .player-quote {{
+        visibility: hidden;
+        width: 160px;
+        background-color: rgba(20,25,30,0.95);
+        color: #f2d590;
+        text-align: center;
+        border-radius: 10px;
+        padding: 8px;
+        position: absolute;
+        z-index: 102;
+        bottom: 110%;
+        left: 50%;
+        transform: translateX(-50%) translateY(15px);
+        border: 1px solid #c8aa6e;
+        opacity: 0;
+        transition: all 0.2s ease-in-out;
+        font-size: 12px;
+        font-weight: bold;
+        pointer-events: none;
+        box-shadow: 0px 5px 15px rgba(0,0,0,0.7);
+    }}
+    .player-avatar-container:hover .player-quote {{
         visibility: visible;
         opacity: 1;
         transform: translateX(-50%) translateY(0px);
@@ -737,37 +830,69 @@ class ChaosDraft:
 
 # --- INTERFEJS STRONY WEBOWEJ ---
 
-# Baza danych start
 db = load_db()
 all_players_db = sorted(list(db.keys()))
 
-# --- ZARZĄDZANIE AUDIO Z FOLDERU NUTY ---
-st.markdown("<h4 style='color: #f2d590; text-align: center; margin-bottom: 10px; margin-top: -10px;'>🎵 Odtwarzacz z Lobby</h4>", unsafe_allow_html=True)
-col_m1, col_m2, col_m3 = st.columns([2, 4, 2])
-with col_m2:
-    supported_formats = ('.mp3', '.wav', '.ogg')
-    if os.path.exists("nuty"):
-        music_files = sorted([f for f in os.listdir("nuty") if f.lower().endswith(supported_formats)])
-    else:
-        music_files = []
+# --- ZARZĄDZANIE AUDIO Z FOLDERU NUTY (WŁASNY ODTWARZACZ HTML/JS) ---
+playlist_data = []
+supported_formats = ('.mp3', '.wav', '.ogg')
+if os.path.exists("nuty"):
+    for f in sorted(os.listdir("nuty")):
+        if f.lower().endswith(supported_formats):
+            b64 = get_base64_of_bin_file(os.path.join("nuty", f))
+            playlist_data.append(f"data:audio/mp3;base64,{b64}")
 
-    if music_files:
-        selected_song = st.selectbox("Wybierz utwór do odtworzenia:", music_files)
-        song_path = os.path.join("nuty", selected_song)
-        st.audio(song_path)
-    else:
-        # Fallbackowy odtwarzacz
-        st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", format="audio/mp3")
-        st.info("💡 Wgraj na GitHuba własne utwory (.mp3) do folderu 'nuty', żeby móc je tutaj wybierać!")
-st.markdown("<hr style='border: 1px solid #c8aa6e; margin-bottom: 20px;'>", unsafe_allow_html=True)
+if not playlist_data:
+    playlist_data.append("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+    playlist_data.append("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3")
 
+playlist_json = json.dumps(playlist_data)
 
-# --- DUŻY DEEP U GÓRY EKRANU ---
+audio_html = f"""
+<div style="font-family: sans-serif; text-align:center; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 10px; border: 1px solid #c8aa6e; color: #fff;">
+    <h4 style="color: #f2d590; margin-top: 0; margin-bottom: 10px;">🎵 Złota Szafa Grająca (Playlista)</h4>
+    <audio id="custom-audio-player" controls autoplay style="height: 35px; border-radius: 20px; outline: none; width: 100%; max-width: 400px;">
+        <source id="audio-source" src="" type="audio/mp3">
+    </audio>
+    <div style="font-size: 11px; color: #aaa; margin-top: 5px;">
+        <i>*Zabezpieczenia przeglądarek blokują autoplay. Kliknij raz <b>"Play"</b>, a utwory z folderu <b>"nuty"</b> będą leciały jeden za drugim!*</i>
+    </div>
+    <script>
+        var playlist = {playlist_json};
+        var current_song = 0;
+        var audio = document.getElementById('custom-audio-player');
+        
+        if (playlist.length > 0) {{
+            audio.src = playlist[0];
+            audio.volume = 0.3;
+            var playPromise = audio.play();
+            if (playPromise !== undefined) {{
+                playPromise.catch(function(error) {{
+                    console.log("Autoplay zablokowany. Wymagana interakcja użytkownika.");
+                }});
+            }}
+        }}
+        
+        audio.onended = function() {{
+            current_song++;
+            if (current_song >= playlist.length) current_song = 0;
+            audio.src = playlist[current_song];
+            audio.play();
+        }};
+    </script>
+</div>
+"""
+components.html(audio_html, height=130)
+
+# --- DUŻY DEEP U GÓRY EKRANU Z DYMKIEM ---
 big_deep_b64 = get_avatar_b64("deepmeme") or get_avatar_b64("deep")
 if big_deep_b64:
     st.markdown(f"""
     <div style="display: flex; justify-content: center; margin-top: 10px; margin-bottom: 20px;">
-        <img src="{big_deep_b64}" class="floating-avatar" style="width: 250px; height: 250px; border-radius: 50%; object-fit: cover; border: 4px solid #c8aa6e; box-shadow: 0 0 30px rgba(242, 213, 144, 0.6);">
+        <div class="deep-container">
+            <img src="{big_deep_b64}" class="deep-img" style="width: 250px; height: 250px; border-radius: 50%; object-fit: cover; border: 4px solid #c8aa6e; box-shadow: 0 0 30px rgba(242, 213, 144, 0.6);">
+            <div class="deep-text">👑 "To ja tu rządzę! Losuj te śmieci, może w końcu ugracie chociaż Clash'a w Tier 4!" 👑</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -925,6 +1050,9 @@ if 'wyniki' in st.session_state:
         player_opgg = db.get(player, {}).get("opgg", "")
         opgg_html = f'<div style="margin-top: 8px;"><a href="{player_opgg}" target="_blank" style="background: #1a5c8a; color: white; padding: 4px 10px; border-radius: 6px; text-decoration: none; font-size: 12px; border: 1px solid #4eb5f1; box-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: background 0.3s;">OP.GG</a></div>' if player_opgg else ""
         
+        # Wyciąganie unikalnego cytatu gracza
+        player_quote = PLAYER_QUOTES.get(player, random.choice(DEFAULT_QUOTES))
+        
         options_html = ""
         for option in data['options']:
             champ_img_url = f"https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/{option['id']}_{option['skin_num']}.jpg"
@@ -955,7 +1083,12 @@ if 'wyniki' in st.session_state:
             
         player_row_html = f"""<div class="draft-card-anim" style="display: flex; background: rgba(20,25,30,0.85); border: 1px solid #c8aa6e; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
 <div style="flex: 0 0 100px; text-align: center; border-right: 1px solid #555; padding-right: 15px; margin-right: 15px;">
-<img src="{avatar_img_src}" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #a5c2d3;">
+
+<div class="player-avatar-container">
+    <img src="{avatar_img_src}" class="player-avatar-img" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #a5c2d3;">
+    <div class="player-quote">💬 "{player_quote}"</div>
+</div>
+
 <div style="font-weight: 800; font-size: 16px; margin-top: 5px; color: #fff;">{player}</div>
 <div style="color: #c8aa6e; font-size: 14px; font-weight: bold; text-transform: uppercase;">{data['role']}</div>
 {opgg_html}
